@@ -338,11 +338,66 @@ int main() {
 
 ### suggestions from zen of design patterns
 
-看了下设计模式之禅对于工厂方法的介绍，讲述的比较简单，深度赶不上这里，但是讲的还比较实用。
+看了下设计模式之禅对于工厂方法的介绍，讲述的比较简单，深度赶不上这里，但是讲的还比较实用。设计模式之禅对于工厂方法的讲述
+主要是说提供一个方法用来构造对象，从而封装构造对象的过程。但是，设计模式在讲工厂方法的时候，还谈到了工厂方法的其余作用，
+对于base-demo的改写就是个非常好的例子。
 
 - 简单工厂方法
 
-考虑上面的代码
+考虑上面的代码的问题，对于每一个concreate_product，都需要一个concreate_creator，即使我们采用模板的方式。
+也至少需要定义一个standard_creator<TheProduct>
+
+简单工厂的思路是，考虑到大部分工厂方法对于对象的构造比较简单，很多都是直接在动态内存上开辟对象。所以，放弃对于
+不同concreate_product构造的扩展性，不提供虚函数让派生类进行重写。但是，泛型的能力是支持的。
+
+```cpp
+// product.h
+// concreate_product.h
+
+// creator.h
+// 1.不提供虚函数
+// 2.工厂方法声明为static
+#ifndef CREATOR_H_
+#define CREATOR_H_
+
+#include <memory>
+#include "product.h"
+
+namespace dp {
+
+template<class TheProduct>
+class Creator {
+ public:
+  Creator() {}
+  typedef std::shared_ptr<Product> ProductPtr;
+
+  static ProductPtr GetProduct() {
+    return MakeProduct();
+  }
+
+ private:
+  static ProductPtr MakeProduct() {
+    return std::make_shared<TheProduct>();
+  }
+};
+
+} // namespace dp
+
+#endif // CREATOR_H_
+
+// main.cc
+#include "concreate_product.h"
+#include "creator.h"
+
+using namespace dp;
+
+int main() {
+  std::shared_ptr<Product> product_ptr = Creator<ConcreateProduct>::GetProduct();
+  product_ptr->DoSomething();
+
+  return 0;
+}
+```
 
 ### demo
 
@@ -350,3 +405,9 @@ int main() {
 2. demo-02, ordinary pointer + template实现
 3. demo-03, smart pointer + template实现
 4. demo-04, base-demo的factory-method实现
+5. demo-05, 不提供虚函数
+
+我们仔细对比这几个demo的实现，可以发现一些规律通用性，灵活性上的一些差异。我不太认同设计模式之禅当中的提法，很为gof的设计模式也没有提到这样的分类，我们可以从代码通用性，灵活性的角度来理解
+1. demo-01/demo-02/demo-03提供了泛型，虚函数的能力。通用性和灵活性都是最好的。
+2. demo-05，只提供泛型，不提供虚函数。代码灵活性不好，因为所有creator的MakeProduct方法都是一样的。
+3. 最极端的一种方法，就是类似于base-demo当的maze和maze_game，没有通用性，也没有泛型的支持。但是确实封装了对于对象的构造过程
