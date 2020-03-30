@@ -36,7 +36,7 @@ Application只知道，一个新的文档何时被创建，但是不知道具体
 - ConcreteProduct (MyDocument)
   - implements the Product interface.
 - Creator (Application)
-  - declaresthefactorymethod,whichreturnsanobjectoftypeProduct.Creator may also define a default implementation of the factory method that returns a default ConcreteProduct object.
+  - declares the factory method,which returns an object of type Product.Creator may also define a default implementation of the factory method that returns a default ConcreteProduct object.
 - ConcreteCreator (MyApplication)
   - overrides the factory method to return an instance of a ConcreteProduct.
 
@@ -56,3 +56,194 @@ Application只知道，一个新的文档何时被创建，但是不知道具体
 
 下面是一些建议：
 - c++中的factory method通常都是virtual function，并且常常是pure virtual function.(ec::Rule34，实践中也是建议多写pure virtuao function)
+- 采用lazy initialization手法(NVI实现)
+  - Instead of creating the concreate product in the constructor(constructor merely initializes it to 0)
+  - The assesor returns the product.
+- 使用模板以避免创建子类
+
+下面我们看一个例子：
+```cpp
+// product.h
+#ifndef PRODUCT_H_
+#define PRODUCT_H_
+
+namespace dp {
+
+class Product {
+ public:
+  virtual ~Product() {}
+
+ public:
+  virtual void DoSomething() = 0;
+};
+
+} // namespace dp
+
+#endif // PRODUCT_H_
+
+// concreate_product.h
+#ifndef CONCREATE_PRODUCT_H_
+#define CONCREATE_PRODUCT_H_
+
+#include "product.h"
+
+namespace dp {
+
+class ConcreateProduct : public Product {
+ public:
+  ConcreateProduct() {}
+
+ public:
+  void DoSomething() override;
+};
+
+};
+
+#endif // CONCREATE_PRODUCT_H_
+
+// creator.h
+#ifndef CREATOR_H_
+#define CREATOR_H_
+
+#include "product.h"
+
+namespace dp {
+
+class Creator {
+ public:
+  Creator() : p_product_(nullptr) {}
+  virtual ~Creator() {}
+
+  Product* GetProduct() {
+    if(p_product_)
+      return p_product_;
+
+    p_product_ = MakeProduct();
+    return p_product_;
+  }
+
+ private:
+  virtual Product* MakeProduct() = 0;
+
+ private:
+  Product* p_product_;
+};
+
+} // namespace dp
+
+#endif // CREATOR_H_
+
+// concreate_creator.h
+#ifndef CONCREATE_CREATOR_H_
+#define CONCREATE_CREATOR_H_
+
+#include "creator.h"
+
+namespace dp {
+
+class ConcreateCreator : public Creator {
+ public:
+  ConcreateCreator() : Creator() {}
+
+ private:
+  Product* MakeProduct() override;
+};
+
+} // namespace dp
+
+#endif // CONCREATE_CREATOR_H_
+
+// main.cc
+#include "concreate_creator.h"
+using namespace dp;
+
+int main() {
+  ConcreateCreator ctor;
+  Product* p_product = ctor.GetProduct();
+
+  p_product->DoSomething();
+
+  return 0;
+}
+```
+
+上面这个实现，主要用了以下手法
+- NVI
+- lazy initialization
+
+当然，这其中NVI的使用非常关键，基类定义了定义调用的时机，但是派生类重写了private vf，进行了不同的实现。这刚好和creator, concrate_creator语义相符。creator定义调用调用的时机，concreate_creator给出自己的实现。
+
+不过，我有一个疑问在于，灵活性我认为没有保留，确实构造过程的复杂性(采用lazy initialization)通过一个操作进行了封装，这没有质疑的。但是，业务代码多少还是需要知道concreate_product才能进行创建。或者说，提高了灵活性，这么说准确的。
+
+```cpp
+Product* p_product = new ConcreateProduct();
+p_product->DoSomething();
+
+// 这么实现，没用工厂方法。好像也行，但是如果使用lazy initialization后，在main.cc当中的构造过程就相对复杂，且灵活性不够。
+// 使用工厂方法之后，main.cc确实不需要关注lazy initialization如何实现，对象的构造过程细节做到了屏蔽。
+```
+
+上面实现的一个问题是，如果仅仅需要一个concreate_product，也需要提供一个concreate_creator.
+此时可以采用模板的方法来避免频繁定义creator子类
+
+```cpp
+// product.h
+// concreate_product.h
+
+// creator.h
+#ifndef CREATOR_H_
+#define CREATOR_H_
+
+#include "product.h"
+
+namespace dp {
+
+class Creator {
+ public:
+  Creator() : p_product_(nullptr) {}
+  virtual ~Creator() {}
+
+  Product* GetProduct() {
+    if(p_product_)
+      return p_product_;
+
+    p_product_ = MakeProduct();
+    return p_product_;
+  }
+
+ private:
+  virtual Product* MakeProduct() = 0;
+
+ private:
+  Product* p_product_;
+};
+
+} // namespace dp
+
+#endif // CREATOR_H_
+
+
+// standard_creator.h
+#ifndef STANDARD_CREATOR_H_
+#define STANDARD_CREATOR_H_
+
+#include "creator.h"
+
+namespace dp {
+
+template<class TheProduct>
+class StandardCreator : public Creator {
+ public:
+  StandardCreator() : Creator() {}
+
+ private:
+  Product* MakeProduct() {
+    return new TheProduct();
+  }
+};
+
+} // namespace dp
+
+#endif // STANDARD_CREATOR_H_
+
+```

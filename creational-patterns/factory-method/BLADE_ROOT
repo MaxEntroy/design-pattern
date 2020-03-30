@@ -15,7 +15,6 @@ cc_config(
   extra_incs = [
   ],
   linkflags = [
-    "-Wl,-all_load"
   ]
 )
 
