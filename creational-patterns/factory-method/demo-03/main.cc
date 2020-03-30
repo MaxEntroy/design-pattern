@@ -4,9 +4,8 @@
 using namespace dp;
 
 int main() {
-  StandardCreator<ConcreateProduct> ctor;
-  Creator::ProductPtr product_ptr = ctor.GetProduct();
-
+  std::shared_ptr<Creator> ctor_ptr = std::make_shared< StandardCreator<ConcreateProduct> >();
+  std::shared_ptr<Product> product_ptr = ctor_ptr->GetProduct();
   product_ptr->DoSomething();
 
   return 0;

@@ -8,7 +8,11 @@ namespace dp {
 class Creator {
  public:
   Creator() : p_product_(nullptr) {}
-  virtual ~Creator() {}
+  virtual ~Creator() {
+    if(p_product_) {
+      delete p_product_;
+    }
+  }
 
   Product* GetProduct() {
     if(p_product_)

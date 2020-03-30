@@ -109,10 +109,21 @@ class ConcreateProduct : public Product {
 
 namespace dp {
 
+#ifndef CREATOR_H_
+#define CREATOR_H_
+
+#include "product.h"
+
+namespace dp {
+
 class Creator {
  public:
   Creator() : p_product_(nullptr) {}
-  virtual ~Creator() {}
+  virtual ~Creator() {
+    if(p_product_) {
+      delete p_product_;
+    }
+  }
 
   Product* GetProduct() {
     if(p_product_)
@@ -128,6 +139,11 @@ class Creator {
  private:
   Product* p_product_;
 };
+
+} // namespace dp
+
+#endif // CREATOR_H_
+
 
 } // namespace dp
 
@@ -304,6 +320,19 @@ class StandardCreator : public Creator {
 
 #endif // STANDARD_CREATOR_H_
 
+// main.cc
+#include "concreate_product.h"
+#include "standard_creator.h"
+
+using namespace dp;
+
+int main() {
+  std::shared_ptr<Creator> ctor_ptr = std::make_shared< StandardCreator<ConcreateProduct> >();
+  std::shared_ptr<Product> product_ptr = ctor_ptr->GetProduct();
+  product_ptr->DoSomething();
+
+  return 0;
+}
 ```
 
 ### demo
