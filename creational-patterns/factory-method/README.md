@@ -1,3 +1,4 @@
+[TOC]
 ## factory method
 
 ### Intent
@@ -334,6 +335,14 @@ int main() {
   return 0;
 }
 ```
+
+### suggestions from zen of design patterns
+
+看了下设计模式之禅对于工厂方法的介绍，讲述的比较简单，深度赶不上这里，但是讲的还比较实用。
+
+- 简单工厂方法
+
+考虑上面的代码
 
 ### demo
 
