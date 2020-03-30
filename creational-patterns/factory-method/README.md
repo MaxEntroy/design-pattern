@@ -247,3 +247,61 @@ class StandardCreator : public Creator {
 #endif // STANDARD_CREATOR_H_
 
 ```
+
+下面用smart pointer给出一版实现
+```cpp
+// creator.h
+#ifndef CREATOR_H_
+#define CREATOR_H_
+
+#include <memory>
+#include "product.h"
+
+namespace dp {
+
+class Creator {
+ public:
+  virtual ~Creator() {}
+  typedef std::shared_ptr<Product> ProductPtr;
+
+  ProductPtr GetProduct() {
+    if(product_ptr_)
+      return product_ptr_;
+
+    product_ptr_ = MakeProduct();
+    return product_ptr_;
+  }
+
+ private:
+  virtual ProductPtr MakeProduct() = 0;
+
+ private:
+  ProductPtr product_ptr_;
+};
+
+} // namespace dp
+
+#endif // CREATOR_H_
+
+
+// standard_creator.h
+#ifndef STANDARD_CREATOR_H_
+#define STANDARD_CREATOR_H_
+
+#include "creator.h"
+
+namespace dp {
+
+template<class TheProduct>
+class StandardCreator : public Creator {
+ private:
+  ProductPtr MakeProduct() {
+    return std::make_shared<TheProduct>();
+  }
+};
+
+} // namespace dp
+
+#endif // STANDARD_CREATOR_H_
+
+```

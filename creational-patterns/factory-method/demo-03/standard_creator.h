@@ -7,9 +7,6 @@ namespace dp {
 
 template<class TheProduct>
 class StandardCreator : public Creator {
- public:
-  StandardCreator() : Creator() {}
-
  private:
   ProductPtr MakeProduct() {
     return std::make_shared<TheProduct>();
