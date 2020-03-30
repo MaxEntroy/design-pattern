@@ -305,3 +305,10 @@ class StandardCreator : public Creator {
 #endif // STANDARD_CREATOR_H_
 
 ```
+
+### demo
+
+1. demo-01, ordinary pointer实现
+2. demo-02, ordinary pointer + template实现
+3. demo-03, smart pointer + template实现
+4. demo-04, base-demo的factory-method实现
