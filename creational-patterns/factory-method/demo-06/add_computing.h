@@ -11,7 +11,6 @@ class AddComputing : public BinaryComputing {
   AddComputing(int l, int r) : BinaryComputing(l, r) {}
 
   int DoComputing() const override;
-
 };
 
 } // namespace dp
