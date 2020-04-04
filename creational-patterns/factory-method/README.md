@@ -350,6 +350,15 @@ int main() {
 简单工厂的思路是，考虑到大部分工厂方法对于对象的构造比较简单，很多都是直接在动态内存上开辟对象。所以，放弃对于
 不同concreate_product构造的扩展性，不提供虚函数让派生类进行重写。但是，泛型的能力是支持的。
 
+结论，对于几种工厂方法的区别，一定要从本质去判断，而不要从表面类的构造去判断
+- 泛型。提供通用性
+- 虚函数。提供灵活性
+
+区别：
+- 正常工厂。提供泛型和虚函数的能力。对于不同的product，可以定义不同的creator。不同的creator可以具有不同的MakeProduct逻辑。
+- 简单工厂。提供泛型能力，但不提供虚函数能力。对于不同的product，定义同一个creator template，当然此时看上去好像是不同的creator，但实际不是。因为他们MakeProduct的逻辑都是一样的。
+- 普通工厂。严格来说，没有这种定义。不提供泛型，也不提供函数。
+
 ```cpp
 // product.h
 // concreate_product.h
@@ -399,6 +408,229 @@ int main() {
 }
 ```
 
+下面我们看个例子，定义一组二元算子，实现计算操作。
+我们先来看cpp的实现，考虑到构造的过程基本一致，所以我采用简单工厂
+
+```cpp
+// binary_computing.h
+#ifndef BINARY_COMPUTING_H_
+#define BINARY_COMPUTING_H_
+
+namespace dp {
+
+class BinaryComputing {
+ public:
+  BinaryComputing() : left_(0), right_(0) {}
+  BinaryComputing(int l, int r) : left_(l), right_(r) {}
+  virtual ~BinaryComputing() {}
+
+  virtual int DoComputing() const = 0;
+
+ protected:
+  int left_;
+  int right_;
+};
+
+} // namespace dp
+
+#endif // BINARY_COMPUTING
+
+// add_computing.h
+#ifndef ADD_COMPUTING_H_
+#define ADD_COMPUTING_H_
+
+#include "binary_computing.h"
+
+namespace dp {
+
+class AddComputing : public BinaryComputing {
+ public:
+  AddComputing() : BinaryComputing() {}
+  AddComputing(int l, int r) : BinaryComputing(l, r) {}
+
+  int DoComputing() const override;
+
+};
+
+} // namespace dp
+
+#endif // ADD_COMPUTING_H_
+
+// minus_computing.h
+#ifndef MINUS_COMPUTING_H_
+#define MINUS_COMPUTING_H_
+
+#include "binary_computing.h"
+
+namespace dp {
+
+class MinusComputing : public BinaryComputing {
+ public:
+  MinusComputing() : BinaryComputing() {}
+  MinusComputing(int l, int r) : BinaryComputing(l, r) {}
+
+  int DoComputing() const override;
+
+};
+
+} // namespace dp
+
+#endif // MINUS_COMPUTING_H_
+
+// computing_factory.h
+#ifndef COMPUTING_FACTORY_H_
+#define COMPUTING_FACTORY_H_
+
+#include <memory>
+
+namespace dp {
+
+template<class TheComputing>
+class ComputingFactory {
+ public:
+  typedef std::shared_ptr<TheComputing> ComputingPtr;
+  ComputingFactory() {}
+
+  static ComputingPtr GetComputing(int left, int right) {
+    return MakeComputing(left, right);
+  }
+
+ private:
+  static ComputingPtr MakeComputing(int left, int right) {
+    return std::make_shared<TheComputing>(left, right);
+  }
+
+};
+
+} // namespace dp
+
+#endif // COMPUTING_FACTORY_H_
+```
+
+**通过cpp这个例子，我们可以发现，工厂方法还有特别重要的一个特点是，构造具体对象的参数，需要工厂方法提供**。
+
+下面，我们来看lua的例子，有一些trick
+1. 首先，lua当中没有abstract class，当然[Lua设计模式](http://allran.github.io/2014/01/26/2014-01-26-lua-design-patterns/)这篇文章当中由类似的模拟做法。但是我不打算采用abstract class的方式。因为本来也没有继承保证(无法提供数据的代码复用)，所以我就直接在各种product当中定义自己的数据即可。
+2. 其次，因为lua只是模拟，做到神似即可。这个要把握住，lua最佳实践告诉我们，不要把lua写的比cpp还fuza
+
+```lua
+-- add_computing.lua
+local _M = {}
+
+_M.name = "add_computing"
+
+function _M.New(l, r)
+  local o = {
+    left = l,
+    right = r
+  }
+  setmetatable(o, {__index = _M})
+
+  return o
+end
+
+function _M.DoComputing(self)
+  return self.left + self.right
+end
+
+return _M
+
+-- minus_computing.lua
+local _M = {}
+
+_M.name = "minus_computing"
+
+function _M.New(l, r)
+  local o = {
+    left = l,
+    right =r
+  }
+  setmetatable(o, {__index = _M})
+
+  return o
+end
+
+function _M.DoComputing(self)
+  return self.left - self.right
+end
+
+return _M
+
+-- computing_factory.lua
+local AddComputing = require "add_computing"
+local MinusComputing = require "minus_computing"
+
+local _M = {}
+
+function _M.New(ct)
+  local o = {
+    computing_type = ct
+  }
+  setmetatable(o, {__index = _M})
+
+  return o
+end
+
+function _M.GetComputing(self, l, r)
+  if self.computing_type == AddComputing.name then
+    return AddComputing.New(l, r)
+  elseif self.computing_type == MinusComputing.name then
+    return MinusComputing.New(l, r)
+  end
+end
+
+return _M
+
+-- simple_computing_factory.lua
+local AddComputing = require "add_computing"
+local MinusComputing = require "minus_computing"
+
+local _M = {}
+
+function _M.GetComputing(computing_type, l, r)
+  if computing_type == AddComputing.name then
+    return AddComputing.New(l, r)
+  elseif computing_type == MinusComputing.name then
+    return MinusComputing.New(l, r)
+  end
+end
+
+return _M
+
+-- main.lua
+local ComputingFactory = require "computing_factory"
+local SimpleComputingFactory = require "simple_computing_factory"
+
+local AddComputing = require "add_computing"
+local MinusComputing = require "minus_computing"
+
+local function test_factory()
+  local AddComputingFactory = ComputingFactory.New(AddComputing.name)
+  local add_obj = AddComputingFactory:GetComputing(3, 4)
+  print(add_obj:DoComputing())
+
+  local MinusComputingFactory = ComputingFactory.New(MinusComputing.name)
+  local add_obj = MinusComputingFactory:GetComputing(3, 4)
+  print(add_obj:DoComputing())
+end
+
+local function test_simple_factory()
+  local add_obj = SimpleComputingFactory.GetComputing(AddComputing.name, 3, 4)
+  print(add_obj:DoComputing())
+
+  local minus_obj = SimpleComputingFactory.GetComputing(MinusComputing.name, 3, 4)
+  print(minus_obj:DoComputing())
+end
+
+test_factory()
+
+test_simple_factory()
+```
+
+看了lua的实现，一些细节需要注意：
+1. simple_factory在使用时，看似没有像factory使用时先定义对应product的creator，而是直接用一个factory进行构造。但是，本质上，它不能算是simple_factory. 因为simple_factory的实现，具备了不同product，提供不同MakeProduct的能力。
+2. 注意，不同语言的使用，一定要灵活，不要教条。特别是对于lua而言，很多地方做到“神似”即可
+
 ### demo
 
 1. demo-01, ordinary pointer实现
@@ -406,6 +638,7 @@ int main() {
 3. demo-03, smart pointer + template实现
 4. demo-04, base-demo的factory-method实现
 5. demo-05, 不提供虚函数
+6. demo-06, 提供了一个实践的例子，对于工厂方法模式的理解更加深刻，并且对几种工厂模式的区别也更加清晰
 
 我们仔细对比这几个demo的实现，可以发现一些规律通用性，灵活性上的一些差异。我不太认同设计模式之禅当中的提法，很为gof的设计模式也没有提到这样的分类，我们可以从代码通用性，灵活性的角度来理解
 1. demo-01/demo-02/demo-03提供了泛型，虚函数的能力。通用性和灵活性都是最好的。
