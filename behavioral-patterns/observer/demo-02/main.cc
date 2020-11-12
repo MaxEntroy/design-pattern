@@ -24,7 +24,6 @@ void EventLoop(PerformancePublisher* p_pub,
   for(;;) {
     if (counter % 10 == 0) {
       p_pub->OnPublish();
-      p_sub->Update();
     }
 
     p_sub->ShowAppData();

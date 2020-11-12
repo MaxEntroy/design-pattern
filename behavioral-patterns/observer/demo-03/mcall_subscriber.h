@@ -1,6 +1,8 @@
 #ifndef MCALL_SUBSCRIBER_H_
 #define MCALL_SUBSCRIBER_H_
 
+#include <memory>
+
 #include "app_data.h"
 #include "performance_publisher.h"
 #include "subscriber.h"

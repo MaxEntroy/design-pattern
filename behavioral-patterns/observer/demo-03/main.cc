@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <memory>
 
 #include "performance_publisher.h"
 #include "mcall_subscriber.h"
@@ -23,7 +24,6 @@ void EventLoop(PerPubPtr per_ptr, McallSubPtr mcall_ptr) {
   for(;;) {
     if (counter % 10 == 0) {
       per_ptr->OnPublish();
-      mcall_ptr->Update();
     }
 
     mcall_ptr->ShowAppData();
