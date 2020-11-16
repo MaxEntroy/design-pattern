@@ -1,5 +1,5 @@
 [TOC]
-## factory method
+## Factory Method
 
 ### Intent
 
