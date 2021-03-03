@@ -33,7 +33,7 @@ should be able to use an extended instance without modifying their code.
 
 ### Structure
 
-<img width="700"  src="img/singeleton.png"/>
+<img width="700"  src="img/singleton.png"/>
 
 ### Participants
 
@@ -59,3 +59,223 @@ The Singleton pattern has several benefits:
 
 Moreover, static member functions in C++ are never virtual, so subclasses
 can't override them polymorphically.
+
+### Implementation
+
+这里以我自己的讨论为主。上文介绍到这里需要一个class method，对于这个没有问题。但是，copy-control member应该怎么实现，这里需要进一步讨论
+
+#### Prohibiting Heap-Based Objects(Stack/Static objects is allowed)
+
+下面代码说明，只把ctor/dtor放入private，不起作用。ctor是为了禁止构造，但是可以通过friend escape.
+dtor放入private是为了模仿stack obj的禁止方式，但是对于heap obj来说，需要进行显示调用delete才能触发dtor，所以不显示调用时，并不能禁止heap obj的生成。
+即使显示调用，任然有friend escape.
+
+```cpp
+#include <iostream>
+
+class Foo {
+ public:
+
+  int data() const { return data_; }
+  friend void GetFoo();
+ private:
+  explicit Foo(int data) : data_(data) {}
+  int data_ = 8;
+};
+
+void GetFoo() {
+  Foo* pfoo = new Foo(3);
+  std::cout << pfoo->data() << std::endl;
+  delete pfoo;
+}
+
+int main(void) {
+  GetFoo();
+  return 0;
+}
+```
+
+下面代码则起到了作用，根据more ec item27的说明
+>Preventing clients from directly instantiating objects on the heap is
+easy, because such objects are always created by calls to new and you
+can make it impossible for clients to call new.
+
+这里还补充道：
+>It suffices to declare operator new private, but it looks strange to have
+operator new be private and operator delete be public, so unless
+there’s a compelling reason to split up the pair, it’s best to declare
+them in the same part of a class.
+
+```cpp
+#include <iostream>
+
+class Foo {
+ public:
+  explicit Foo(int data) : data_(data) {}
+
+  int data() const { return data_; }
+
+  friend void GetFoo();
+
+ private:
+  static void* operator new(size_t size);
+  static void operator delete(void* ptr);
+
+ private:
+  int data_ = 8;
+};
+
+void GetFoo() {
+  Foo* pfoo = new Foo(3);
+  std::cout << pfoo->data() << std::endl;
+  delete pfoo;
+}
+
+int main(void) {
+  GetFoo();
+  return 0;
+}
+
+```
+
+总结，要生成stack only object
+- It suffices to declare operator new private(it’s best to declare them in the same part of a class)
+- declare operator new[] and operator delete[] private
+
+#### Requiring Heap-Based Objects(Stack/Static objects is forbidden)
+
+看如下代码，ctor放入private并没有解决问题，friend escape.同时，这么做会禁止heap obj的构造。
+
+```cpp
+#include <iostream>
+
+class Foo {
+ public:
+
+  int data() const { return data_; }
+
+  friend void FooPrint();
+
+ private:
+  explicit Foo(int data) : data_(data) {}
+  int data_ = 8;
+};
+
+void FooPrint() {
+  Foo foo(3);
+  std::cout << foo.data() << std::endl;
+}
+
+int main(void) {
+  FooPrint();
+  return 0;
+}
+```
+
+我们将dtor放入private，则stack obj被完全禁止。但此时，heap obj的析构受到影响，因为类外不可见dtor.
+
+```cpp
+#include <iostream>
+
+class Foo {
+ public:
+  explicit Foo(int data) : data_(data) {}
+
+  int data() const { return data_; }
+
+  friend void FooPrint();
+ private:
+  ~Foo();
+  int data_ = 8;
+};
+
+void FooPrint() {
+  Foo foo(3);
+  std::cout << foo.data() << std::endl;
+}
+
+int main(void) {
+  FooPrint();
+  return 0;
+}
+```
+
+此时需要给定一个public destory接口，在destory接口内，调用dtor。此时在类内作用于，可行
+
+```cpp
+#include <iostream>
+
+class Foo {
+ public:
+  explicit Foo(int data) : data_(data) {}
+  void Dtor()  { delete this; }
+
+  int data() const { return data_; }
+
+  friend void FooPrint();
+ private:
+  ~Foo() = default;
+  int data_ = 8;
+};
+
+int main(void) {
+  Foo* p = new Foo(3);
+  std::cout << p->data() << std::endl;
+  p->Dtor();
+  return 0;
+}
+```
+
+总结，要生成heap only obj:
+- private dtor with implementation
+- public destory func to call dtor.
+- other copy control member is normal.
+
+#### Scott Meyer's Implementation
+
+```cpp
+#ifndef SINGLETON_H_
+#define SINGLETON_H_
+
+// Scott Meyer's Singleton
+
+class Singleton {
+ public:
+  Singleton(const Singleton&) = delete;
+  Singleton& operator=(const Singleton&) = delete;
+
+  static Singleton& GetInstance() {
+    static Singleton s;
+    return s;
+  }
+
+ private:
+  Singleton() = default;
+  ~Singleton() = default;
+};
+
+#endif  // SINGLETON_H_
+```
+
+- copy control member
+  - private dtor with default implementation
+    - private保证stack obj forbidden
+    - default implementation 保证static obj构造成功，所以必须有default inplementation
+  - private default ctor with default implementation
+    - private保证heap obj forbidden(原始的禁止heap obj做法不是这样，但是当前做法也可以达到目的，不提供friend method)
+    - default implementation 保证static obj析构成功
+  - copy semantics is delete.
+- Static GetInstance method(global point of access)
+- Static variables with block scope(a class only has one instance)
+    - c++11保证初始化的线程安全
+    - local static var只构造一次，保证单例
+      - static method不能保证单例，该方法可以保证对象共享，但是方法内部的local stack obj并不是单例
+      - 多个线程可能访问时，有不同的local stack obj。
+      - local static obj只构造一次，有可能是单例。但是如果多线程并发初始化时，也不是单例
+        - c++11保证是单例 
+        - c++03不保证
+
+参考<br>
+[C++ Singleton design pattern](https://stackoverflow.com/questions/1008019/c-singleton-design-pattern) 非常详尽的讨论
+[Meyer’s Singleton](http://laristra.github.io/flecsi/src/developer-guide/patterns/meyers_singleton.html)
+[Is Meyers' implementation of the Singleton pattern thread safe?](https://stackoverflow.com/questions/1661529/is-meyers-implementation-of-the-singleton-pattern-thread-safe)
