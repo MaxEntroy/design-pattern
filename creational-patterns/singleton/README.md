@@ -231,7 +231,7 @@ int main(void) {
 - public destory func to call dtor.
 - other copy control member is normal.
 
-#### Scott Meyer's Implementation
+#### Scott Meyer's Implementation(Static variables with block scope)
 
 ```cpp
 #ifndef SINGLETON_H_
@@ -275,7 +275,10 @@ class Singleton {
         - c++11保证是单例 
         - c++03不保证
 
+q:why?
+>If control enters the declaration concurrently while the variable is being initialized, the concurrent execution shall wait for completion of the initialization.
+
 参考<br>
-[C++ Singleton design pattern](https://stackoverflow.com/questions/1008019/c-singleton-design-pattern) 非常详尽的讨论
-[Meyer’s Singleton](http://laristra.github.io/flecsi/src/developer-guide/patterns/meyers_singleton.html)
-[Is Meyers' implementation of the Singleton pattern thread safe?](https://stackoverflow.com/questions/1661529/is-meyers-implementation-of-the-singleton-pattern-thread-safe)
+[C++ Singleton design pattern](https://stackoverflow.com/questions/1008019/c-singleton-design-pattern) 非常详尽的讨论<br>
+[Meyer’s Singleton](http://laristra.github.io/flecsi/src/developer-guide/patterns/meyers_singleton.html)<br>
+[Is Meyers' implementation of the Singleton pattern thread safe?](https://stackoverflow.com/questions/1661529/is-meyers-implementation-of-the-singleton-pattern-thread-safe)<br>
