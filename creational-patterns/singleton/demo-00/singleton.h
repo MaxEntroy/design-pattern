@@ -2,7 +2,6 @@
 #define SINGLETON_H_
 
 // Scott Meyer's Singleton
-
 class Singleton {
  public:
   Singleton(const Singleton&) = delete;

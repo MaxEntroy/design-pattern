@@ -141,6 +141,7 @@ int main(void) {
 总结，要生成stack only object
 - It suffices to declare operator new private(it’s best to declare them in the same part of a class)
 - declare operator new[] and operator delete[] private
+- other copy control member is normal.
 
 #### Requiring Heap-Based Objects(Stack/Static objects is forbidden)
 
@@ -282,3 +283,65 @@ q:why?
 [C++ Singleton design pattern](https://stackoverflow.com/questions/1008019/c-singleton-design-pattern) 非常详尽的讨论<br>
 [Meyer’s Singleton](http://laristra.github.io/flecsi/src/developer-guide/patterns/meyers_singleton.html)<br>
 [Is Meyers' implementation of the Singleton pattern thread safe?](https://stackoverflow.com/questions/1661529/is-meyers-implementation-of-the-singleton-pattern-thread-safe)<br>
+
+#### Chenshuo's Implementation(The function call_once in combination with the once_flag)
+
+chenshuo给出的实现，主要是针对c++98/c++03的版本，基本思路是The function call_once in combination with the once_flag
+但是，由于c++98/c++03并不支持，所以是借助pthread库对应变量来实现，从而代码也不跨平台。当然，c++98/c++03不支持Static variables with block scope
+
+**pthread_once/pthread_once_t替换c++11当中的std::call_once/std::once_flag**
+
+```cpp
+#ifndef SINGLETON_H_
+#define SINGLETON_H_
+
+#include <pthread.h>
+
+// Chenshuo's Singleton
+class Singleton {
+ public:
+  static Singleton& GetInstance() {
+    pthread_once(&once_flag_, &Singleton::Init);
+    return *s_;
+  }
+
+ private:
+  Singleton() {}
+  ~Singleton() {}
+
+  Singleton(const Singleton&);
+  Singleton& operator=(const Singleton&);
+
+  static void Init() { s_ = new Singleton(); }
+
+  static pthread_once_t once_flag_;
+  static Singleton* s_;
+};
+
+pthread_once_t Singleton::once_flag_ = PTHREAD_ONCE_INIT;
+
+Singleton* Singleton::s_ = NULL;
+
+#endif  // SINGLETON_H_
+
+```
+
+- copy control member
+  - private dtor with default implementation
+    - private保证stack obj forbidden
+    - default implementation 保证static obj构造成功，所以必须有default inplementation
+  - private default ctor with default implementation
+    - private保证heap obj forbidden(原始的禁止heap obj做法不是这样，但是当前做法也可以达到目的，不提供friend method)
+    - default implementation 保证static obj析构成功
+  - copy semantics is delete.
+  - 由于c++98/c++03不支持delete/default
+    - ctor/dtor采用显示给出default implentation.
+    - using private undefined ones instead of delete.
+- Static GetInstance method(global point of access)
+- The function call_once in combination with the once_flag
+  - pthread_once/pthread_once_t替换c++11当中的std::call_once/std::once_flag
+- No public destory interface.
+  - 可以提供public destroy interface, 成员函数可以调用dtor
+  - chenshuo没有给出的原因如下
+    - 长时间稳定运行的服务器上没有必要销毁这个对象，在短时间运行的场景下，程序退出自然对象就被释放
+    - 如果用户不小心调用了析构函数，那么这个单例模式就没有用了
