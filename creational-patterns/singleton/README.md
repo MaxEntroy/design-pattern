@@ -345,3 +345,7 @@ Singleton* Singleton::s_ = NULL;
   - chenshuo没有给出的原因如下
     - 长时间稳定运行的服务器上没有必要销毁这个对象，在短时间运行的场景下，程序退出自然对象就被释放
     - 如果用户不小心调用了析构函数，那么这个单例模式就没有用了
+
+参考<br>
+[再探线程安全的单例模式实现](https://irvingow.github.io/2019/07/24/%E5%86%8D%E6%8E%A2%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E7%9A%84%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F%E5%AE%9E%E7%8E%B0/)<br>
+[pthread_once](https://linux.die.net/man/3/pthread_once)
