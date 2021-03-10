@@ -349,3 +349,65 @@ Singleton* Singleton::s_ = NULL;
 参考<br>
 [再探线程安全的单例模式实现](https://irvingow.github.io/2019/07/24/%E5%86%8D%E6%8E%A2%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8%E7%9A%84%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F%E5%AE%9E%E7%8E%B0/)<br>
 [pthread_once](https://linux.die.net/man/3/pthread_once)
+
+#### Double-checked Locking Pattern
+
+这一小节先简单讨论，记住结论即可。
+
+```cpp
+Singleton* Singleton::instance() {
+  if (pInstance == 0) { // 1st test
+    Lock lock;
+    if (pInstance == 0) { // 2nd test
+      pInstance = new Singleton;
+    }
+  }
+  return pInstance;
+}
+```
+
+以上是dclp的实现，这么做的原因是，在最外层判断加锁的逻辑，实现是正确的，但是开销很大。因为大部分场景都是只读的场景，没有必要加锁。
+所以，才有了dclp的做法，即如果是读场景(!pInstance)，那么不加锁，直接获取。这里的逻辑没有问题，问题出在写这里。
+
+This statement causes three things to happen:
+- Step 1: Allocate memory to hold a Singleton object.
+- Step 2: Construct a Singleton object in the allocated memory.
+- Step 3: Make pInstance point to the allocated memory.
+
+Of critical importance is the observation that compilers are not constrained
+to perform these steps in this order! In particular, compilers are sometimes
+allowed to swap steps 2 and 3.
+
+```cpp
+Singleton* Singleton::instance() {
+  if (pInstance == 0) {
+    Lock lock;
+    if (pInstance == 0) {
+      pInstance = // Step 3
+      operator new(sizeof(Singleton)); // Step 1
+      new (pInstance) Singleton; // Step 2
+    }
+  }
+  return pInstance;
+}
+```
+
+- Thread A enters instance, performs the first test of pInstance, acquires
+the lock, and executes the statement made up of steps 1 and 3. It is then
+suspended. At this point pInstance is non-null, but no Singleton object
+has yet been constructed in the memory pInstance points to.
+- Thread B enters instance, determines that pInstance is non-null, and
+returns it to instance’s caller. The caller then dereferences the pointer
+to access the Singleton that, oops, has not yet been constructed.
+
+q:真正的原因到底是什么？
+>DCLP will work only if steps 1 and 2 are completed before step 3 is performed, but there is no way to express this constraint in C or C++. That’s the dagger in the heart of DCLP: we need to define a constraint on relative instruction ordering, but our languages give us no way to express the constraint
+>
+>Nothing you do can alter the fundamental problem: you need to be able
+to specify a constraint on instruction ordering, and your language gives you no
+way to do it
+
+本质是instruction ordering，但是语言层面无法提供我们机制来避免编译器进行指令重排的优化
+
+参考
+[C++ and the Perils of Double-Checked Locking](https://www.aristeia.com/Papers/DDJ_Jul_Aug_2004_revised.pdf)
