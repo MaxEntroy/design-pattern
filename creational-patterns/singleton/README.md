@@ -66,34 +66,7 @@ can't override them polymorphically.
 
 #### Prohibiting Heap-Based Objects(Stack/Static objects is allowed)
 
-下面代码说明，只把ctor/dtor放入private，不起作用。ctor是为了禁止构造，但是可以通过friend escape.
-dtor放入private是为了模仿stack obj的禁止方式，但是对于heap obj来说，需要进行显示调用delete才能触发dtor，所以不显示调用时，并不能禁止heap obj的生成。
-即使显示调用，任然有friend escape.
-
-```cpp
-#include <iostream>
-
-class Foo {
- public:
-
-  int data() const { return data_; }
-  friend void GetFoo();
- private:
-  explicit Foo(int data) : data_(data) {}
-  int data_ = 8;
-};
-
-void GetFoo() {
-  Foo* pfoo = new Foo(3);
-  std::cout << pfoo->data() << std::endl;
-  delete pfoo;
-}
-
-int main(void) {
-  GetFoo();
-  return 0;
-}
-```
+这里要注意，只禁止heap obj，但是不能禁止stack obj。所以，不能直接禁止copy control member.
 
 下面代码则起到了作用，根据more ec item27的说明
 >Preventing clients from directly instantiating objects on the heap is
@@ -107,41 +80,36 @@ there’s a compelling reason to split up the pair, it’s best to declare
 them in the same part of a class.
 
 ```cpp
-#include <iostream>
+// stack only
+#include <stddef.h>
 
-class Foo {
+class Foo{
  public:
-  explicit Foo(int data) : data_(data) {}
+  Foo() = default;
 
-  int data() const { return data_; }
-
-  friend void GetFoo();
+  friend void Bar();
 
  private:
   static void* operator new(size_t size);
   static void operator delete(void* ptr);
-
- private:
-  int data_ = 8;
 };
 
-void GetFoo() {
-  Foo* pfoo = new Foo(3);
-  std::cout << pfoo->data() << std::endl;
-  delete pfoo;
+void Bar() {
+  Foo* s = new Foo;
 }
 
-int main(void) {
-  GetFoo();
+int main (void) {
+  Bar();
   return 0;
 }
-
 ```
 
 总结，要生成stack only object
 - It suffices to declare operator new private(it’s best to declare them in the same part of a class)
 - declare operator new[] and operator delete[] private
 - other copy control member is normal.
+
+friend也能禁止的trick在于，new/delete只给出重载声明，但是不给定义。
 
 #### Requiring Heap-Based Objects(Stack/Static objects is forbidden)
 
@@ -232,6 +200,8 @@ int main(void) {
 - public destory func to call dtor.
 - other copy control member is normal.
 
+需要注意的是，以上讨论的分别是只能生成栈对象，或者只能生成堆对象。二者的手法均没有在default ctor上下功夫，如果把default ctor放入private，则不考虑friend的情形下，既不能生成栈对象，也不能生成堆对象。
+
 #### Scott Meyer's Implementation(Static variables with block scope)
 
 ```cpp
@@ -258,13 +228,11 @@ class Singleton {
 #endif  // SINGLETON_H_
 ```
 
-- copy control member
-  - private dtor with default implementation
-    - private保证stack obj forbidden
-    - default implementation 保证static obj构造成功，所以必须有default inplementation
+
   - private default ctor with default implementation
-    - private保证heap obj forbidden(原始的禁止heap obj做法不是这样，但是当前做法也可以达到目的，不提供friend method)
-    - default implementation 保证static obj析构成功
+    - 除friend外，禁止stack/heap obj
+  - private dtor with default implementation
+    - 根据上面的讨论，我们知道这里其实没啥用。private dtor只有在只生成heap obj时起作用。private ctor可以同时禁止stack and heap obj
   - copy semantics is delete.
 - Static GetInstance method(global point of access)
 - Static variables with block scope(a class only has one instance)
@@ -329,10 +297,10 @@ Singleton* Singleton::s_ = NULL;
 - copy control member
   - private dtor with default implementation
     - private保证stack obj forbidden
-    - default implementation 保证static obj构造成功，所以必须有default inplementation
+    - default implementation 保证static obj析构成功
   - private default ctor with default implementation
     - private保证heap obj forbidden(原始的禁止heap obj做法不是这样，但是当前做法也可以达到目的，不提供friend method)
-    - default implementation 保证static obj析构成功
+    - default implementation 保证static obj构造成功，所以必须有default inplementation
   - copy semantics is delete.
   - 由于c++98/c++03不支持delete/default
     - ctor/dtor采用显示给出default implentation.
