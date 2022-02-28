@@ -1,21 +1,15 @@
-[TOC]
-
 ## Observer
 
 ### Intent
 
-Define a one-to-many dependency between objects so that when one object changes state, all its dependents are notified and updated automatically.
-
-q:定义当中需要注意的地方有哪些?
-- one-to-many
+Define a **one-to-many** dependency between objects so that when one object changes state, all its dependents are notified and updated automatically.
 
 ### Motivation
 
-q:rt?
->A common side-effect of partitioning a system into a collection of cooperating classes is the need to maintain consistency between related objects. 
+A common side-effect of partitioning a system into a collection of cooperating classes is the need to maintain consistency between related objects. 
 You don't want to achieve consistency by making the classes tightly coupled, because that reduces their reusability.
->
->动机的说明非常清楚，就是当我们把系统自上而下的划分为一些相互协作的模块时，这些模块进行一致性通信时面临的问题。
+
+动机的说明非常清楚，就是当我们把系统自上而下的划分为一些相互协作的模块时，这些模块进行一致性通信时面临的问题。
 作者举了一个非常好的例子，就是数据图表的case。多份数据图表之间相互独立，但是他们底层的数据是共享的，所以存在这样一种一对多的关系。
 但是，如果我们把数据和上层展示耦合到一块时，我们就会发现这会导致代码的重用性很低。每增加一个展示，需要增加对应的底层数据。
 
@@ -23,7 +17,7 @@ You don't want to achieve consistency by making the classes tightly coupled, bec
 
 - When an abstraction has two aspects, one dependent on the other.Encapsulating these aspects in separate objects lets you vary and reuse them independently.
 - When a change to one object requires changing others, and you don't know how many objects need to be changed.
-- When an object should be able to notify other objects without making assumptions about who these objects are. In other words, you don'twant these objects tightly coupled.
+- When an object should be able to notify other objects without making assumptions about who these objects are. In other words, you don't want these objects tightly coupled.
 
 ### Structure
 
@@ -84,7 +78,8 @@ Because observers have no knowledge of each other's presence, they canbe blind t
 
 - demo-01
 
-这是一个错误的实践，但是我保留了这个demo的原因在于，这个demo犯了一些值得思考的错误》
+这是一个错误的实践，但是我保留了这个demo的原因在于，这个demo犯了一些值得思考的错误
+
 1. 编译通不过。
 ```cpp
 demo-01/mcall_subscriber.cc:8:38: error: member access into incomplete type 'dp::Publisher'
@@ -115,8 +110,8 @@ publisher的state，update接口的语义只是publisher用来消息通知subsri
 这个demo比价特殊，为了使用weak_ptr而使用weak_ptr,所以不是最佳实践，只是为了说明weak_ptr的用途。
 
 1. Detach()函数需要删除，有他在，则不会形成cycle references.
-2. publisher保留了对于mcall_subscriber的引用，mcall_subscriber保留了对于performance_publisher的引用，那么到底应该让谁采用weak_ptr呢？
-2.1. mcall_subscriber保留performance_publisher的引用时为了进行数据同步，如果后者销毁，那么前者则不能同步数据。即前者对后者的生命周期是关心的
-2.2. publisher对于mcall_subscriber的生命周期也关心，但没有那么关心，因为后者销毁，只是少了一个notify的对象，并不会用它进行什么数据更新。
+2. publisher保留了对于mcall_subscriber的引用，mcall_subscriber保留了对于performance_publisher的引用，那么到底应该让谁采用weak_ptr呢？<br>
+2.1. mcall_subscriber保留performance_publisher的引用时为了进行数据同步，如果后者销毁，那么前者则不能同步数据。即前者对后者的生命周期是关心的<br>
+2.2. publisher对于mcall_subscriber的生命周期也关心，但没有那么关心，因为后者销毁，只是少了一个notify的对象，并不会用它进行什么数据更新<br>
 2.3. 这里，effective modern cpp当中也给了建议，Subjects have no interest in control‐ ling the lifetime of their observers，but they have a great interest in making sure that if an observer gets destroyed, subjects don’t try to subse‐ quently access it.
-2.4. 2.3这句话看似矛盾，那到底是关心还是不关心，应该这么说，observer的生命周期，不由subject决定。只不过，当observer销毁时，需要告诉subject
+2.4. 2.3这句话看似矛盾，那到底是关心还是不关心，应该这么说，observer的生命周期，不由subject决定。只不过，当observer销毁时，需要告诉subject<br>
