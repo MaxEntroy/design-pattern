@@ -3,6 +3,13 @@
 #include <iostream>
 
 namespace dp {
+McallSubscriber::McallSubscriber(PerPubPtr ptr) : per_pub_ptr_(ptr) {
+    per_pub_ptr_->Attach(this);
+}
+
+McallSubscriber::~McallSubscriber() {
+    per_pub_ptr_->Detach(this);
+}
 
 void McallSubscriber::Update() {
   app_data_.cpu_ratio = per_pub_ptr_->GetCpu();

@@ -11,18 +11,14 @@ namespace dp {
 
 class McallSubscriber : public Subscriber {
  public:
-  typedef std::shared_ptr<PerformancePublisher> PerPubPtr;
-  explicit McallSubscriber(PerPubPtr ptr) : per_pub_ptr_(ptr) {
-    per_pub_ptr_->Attach(this);
-  }
-  ~McallSubscriber() {
-    per_pub_ptr_->Detach(this);
-  }
+  using PerPubPtr = std::shared_ptr<PerformancePublisher>;
+  explicit McallSubscriber(PerPubPtr ptr);
+  ~McallSubscriber();
 
  public:
   void Update() override;
-
   void ShowAppData() const;
+
  private:
   ApplicationData app_data_;
   PerPubPtr per_pub_ptr_;

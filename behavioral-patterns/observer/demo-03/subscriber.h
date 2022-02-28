@@ -5,7 +5,7 @@ namespace dp {
 
 class Subscriber {
  public:
-  virtual ~Subscriber() {}
+  virtual ~Subscriber() = default;
 
   virtual void Update() = 0;
 };

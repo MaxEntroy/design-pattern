@@ -107,7 +107,7 @@ publisher的state，update接口的语义只是publisher用来消息通知subsri
 
 - demo-04
 
-这个demo比价特殊，为了使用weak_ptr而使用weak_ptr,所以不是最佳实践，只是为了说明weak_ptr的用途。
+这个demo比价特殊，为了使用weak_ptr而使用weak_ptr,所以不是最佳实践，只是为了说明weak_ptr的用途。demo-03中需要显式detach，但是demo-04则不需要了
 
 1. Detach()函数需要删除，有他在，则不会形成cycle references.
 2. publisher保留了对于mcall_subscriber的引用，mcall_subscriber保留了对于performance_publisher的引用，那么到底应该让谁采用weak_ptr呢？<br>

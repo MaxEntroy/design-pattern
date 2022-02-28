@@ -4,11 +4,9 @@
 namespace dp {
 
 struct ApplicationData {
-  double cpu_ratio;
-  double mem_ratio;
-  double disk_ratio;
-
-  ApplicationData() : cpu_ratio(0.0), mem_ratio(0.0), disk_ratio(0.0) {}
+  double cpu_ratio = 0.0;
+  double mem_ratio = 0.0;
+  double disk_ratio = 0.0;
 };
 
 } // namespace dp

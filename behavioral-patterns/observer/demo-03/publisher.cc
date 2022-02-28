@@ -12,12 +12,11 @@ void Publisher::Detach(Subscriber* ptr) {
 
 void Publisher::OnPublish() {
   SetState();
-
   Notify();
 }
 
 void Publisher::Notify() {
-  for(auto ptr : subscriber_ptr_list_) {
+  for(auto& ptr : subscriber_ptr_list_) {
     ptr->Update();
   }
 }

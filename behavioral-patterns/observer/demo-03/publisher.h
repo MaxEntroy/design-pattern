@@ -9,7 +9,7 @@ namespace dp {
 
 class Publisher {
  public:
-  virtual ~Publisher() {}
+  virtual ~Publisher() = default;
 
   void Attach(Subscriber*);
   void Detach(Subscriber*);
@@ -17,8 +17,8 @@ class Publisher {
   void OnPublish();
 
  private:
-  void Notify();
   virtual void SetState() = 0;
+  void Notify();
 
  private:
   std::list<Subscriber*> subscriber_ptr_list_;
